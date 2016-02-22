@@ -19,22 +19,23 @@ function deriv(f, x, constants, target, i){
 }
 
 
-var gradient_following = {
-	sign_check: function(s, t){
-		//max(s, 0) indicates the value that is greater
-		var max_s = Math.max(s, 0);
-		var max_t = Math.max(t, 0);
+function sign_check(s, t){
+	//max(s, 0) indicates the value that is greater
+	var max_s = Math.max(s, 0);
+	var max_t = Math.max(t, 0);
 
-		//if max_s is 0 and max_t is non zero, then sign changed.
-		//if max_t is 0 and max_s is non zero, then sign changed.
-		if(max_s == 0 && max_t > 0 || max_t == 0 && max_s > 0){
-			return true;
-		}
-		else{
-			return false;
-		}
-	},
-	
+	//if max_s is 0 and max_t is non zero, then sign changed.
+	//if max_t is 0 and max_s is non zero, then sign changed.
+	if(max_s == 0 && max_t > 0 || max_t == 0 && max_s > 0){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+
+var gradient_following = {
 	test_estimation: function(func, x, constants, target){
 		res = [];
 		sum_cons = 0;
@@ -105,7 +106,7 @@ var gradient_following = {
 				max_iters += 1;
 			}
 
-			if (Math.abs( fx_2 - f_x) <= cond || this.sign_check(fx_2, f_x) || repetition_check[key] >= 3){
+			if (Math.abs( fx_2 - f_x) <= cond || sign_check(fx_2, f_x) || repetition_check[key] >= 3){
 				run = false;
 			}
 
@@ -137,8 +138,15 @@ var DNM =  {
 	},
 
 	begin_: function (func, x_init, constants, target){
+
+		var methods = [
+			gradient_following.test_estimation,
+			gradient_following.begin_estimation
+		];
+		var default_method = 1;
 		//x = gradient_following.test_estimation(func, x_init, constants, target);
-		x = gradient_following.begin_estimation(func, x_init, constants, target);
+		//x = gradient_following.begin_estimation(func, x_init, constants, target);
+		x = methods[default_method](func, x_init, constants, target);
 		console.log(x);
 
 		if (!x){
@@ -182,19 +190,25 @@ var DNM =  {
 
 			var f_x_2 = func(x, constants, target);
 
-			console.log(func(x, constants, target),  (sign_direction*( f_x/fdx )), '@@@', target, booster, n);
 
+			console.log(func(x, constants, target), f_x, (sign_direction*( f_x/fdx )), '@@@', target, booster, n);
+			
 			if (Math.abs(f_x_2) <= epsilon || Math.abs(f_x_2) < 0.01/Math.log(target) ){
 				run_newton = false;
 			}
 
+			if (Math.abs(0-f_x_2) > Math.abs(0-f_x) ){
+				//change the method of estimating the direction if solution is drifting away
+				x = methods[0](func, x, constants, target);
+			}
+
 			fx_old = f_x;
 			old_gradients = gradients;
-			n += 1;
 			if ((new Date().getTime() - start_time)/1000 >= 30 ){
 				x = x_init;
 				run_newton = false;
 			}
+
 
 		}
 		return x;
